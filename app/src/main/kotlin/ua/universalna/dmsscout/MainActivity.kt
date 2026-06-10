@@ -15,7 +15,7 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import org.jsoup.Jsoup // Імпорт Jsoup
+import org.jsoup.Jsoup
 
 class MainActivity : AppCompatActivity() {
 
@@ -105,12 +105,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent.createChooser(intent, "Поділитись"))
         }
 
-        // НОВИЙ МЕТОД: Нативний скрапер сайтів
         @JavascriptInterface
         fun scrapeWebsite(url: String, callbackId: String) {
             Thread {
                 try {
-                    // Парсимо сторінку, імітуючи звичайний десктопний браузер
                     val doc = Jsoup.connect(url)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                         .timeout(10000)
