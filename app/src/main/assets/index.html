@@ -55,7 +55,7 @@ label.f{display:block;font-size:11px;color:var(--mut);font-weight:700;margin-bot
 .f-in:focus{outline:2px solid var(--orange)}
 textarea.f-in{min-height:64px}
 .row-btns{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
-.btn{border:0;border-radius:10px;padding:10px 15px;font-size:14px;font-weight:800}
+.btn{border:0;border-radius:10px;padding:10px 15px;font-size:14px;font-weight:800;cursor:pointer}
 .btn.save{background:var(--orange);color:#fff}
 .btn.del{background:#fff;color:var(--bad);border:1px solid #ecc9c5}
 .bottombar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid var(--line)}
@@ -98,8 +98,8 @@ dialog .hint{font-size:12px;color:var(--mut);margin:6px 0 10px}
 <dialog id="dlgImp">
   <h3>Імпорт CSV</h3>
   <div class="hint">Формат (з заголовком або без):<br>
-  <span class="mono">edrpou,name,phone,email,address</span><br>
-  Зайві колонки ігноруються. Якщо ЄДРПОУ вже є в списку — контакти додаються до існуючої картки, нові компанії створюються.</div>
+  <span class="mono">edrpou,name,phone,email,address,boss</span><br>
+  Зайві колонки ігноруються. Підтримується поле керівника.</div>
   <input class="f-in" type="file" id="impFile" accept=".csv,text/csv,text/plain">
   <div class="row-btns"><button class="btn save" onclick="doImport()">Імпортувати</button>
   <button class="btn del" onclick="dlgImp.close()">Скасувати</button></div>
@@ -110,51 +110,8 @@ const STATUSES = ["Новий","В роботі","Зацікавлені","Пе�
 const KEY = "dms_scout_v1";
 let DATA = [], FILTER = "", QUERY = "";
 
-const SEED = [
-["Дрони / Аерокосмос","Бойові Птахи України (warbirds)","ТОВ \"Бойові Птахи України\"","44774645","warbirds.com.ua"],
-["Дрони / Аерокосмос","ТОВ \"УМО УКРАЇНА\"","ТОВ \"УМО УКРАЇНА\"","45274025","umo-ukraine.com"],
-["Дрони / Аерокосмос","ukrjet.ua (Укрджет)","ТОВ \"НВП \"УКРДЖЕТ\"","41754284","ukrjet.ua"],
-["Дрони / Аерокосмос","Пегас АРМС (Pegasus Arms)","ТОВ \"ПЕГАС АРМС\"","49095441","pegasusarms.com.ua"],
-["Дрони / Аерокосмос","frontline (Frontline Robotics)","ТОВ \"ФРОНТЛАЙН РОБОТІКС\"","","frontline-robotics.tech"],
-["Дрони / Аерокосмос","Inguar Defence","ТОВ \"ІНГУАР\"","43879272","inguardefence.com"],
-["Дрони / Аерокосмос","Swarmer","ТОВ \"АВТОНОМНІ РОБОТИЗОВАНІ СИСТЕМИ\"","45537400","getswarmer.com"],
-["Дрони / Аерокосмос","Vyriy","ТОВ \"ВИРІЙ ІНДАСТРІ\"","45486404","vyriy.com"],
-["Дрони / Аерокосмос","Wild Hornets","БО \"БФ \"ДИКІ ШЕРШНІ\" / ТОВ \"Українські машини\"","45384185","wildhornets.com"],
-["Дрони / Аерокосмос","Buntar Aerospace","ТОВ \"Бунтар Аероспейс\"","45364583","buntaraerospace.com"],
-["Дрони / Аерокосмос","Odd Systems / The Fourth Law","\"Четвертий Закон\" / Odd Systems","","thefourthlaw.ai"],
-["Дрони / Аерокосмос","Aero Center","ТОВ \"АЕРО ЦЕНТР\" / ТОВ \"АЦД\"","44757617",""],
-["Дрони / Аерокосмос","Ukrspecsystems","ТОВ \"УКРСПЕЦСИСТЕМС\"","39562922","ukrspecsystems.com"],
-["Дрони / Аерокосмос","airunit","ТОВ \"Ейр'юніт\"","45256955","airunit.com.ua"],
-["Дрони / Аерокосмос","Bavovna Defence","ТОВ \"БАВОВНА ДЕФЕНС\"","45402555","bavovna.team"],
-["Дрони / Аерокосмос","Генерал Черешня","ТОВ \"ЦДБС\"","45203113","centrdbs.com.ua"],
-["РЕБ / Зв'язок / Симулятори","SOTY","ТОВ \"НКФ \"СОТИ\"","39745855","tovsoty.com"],
-["РЕБ / Зв'язок / Симулятори","Лють Компонентс","ТОВ \"Лють Компонентс\"","",""],
-["РЕБ / Зв'язок / Симулятори","УКР АРМО ТЕХ","ТОВ \"УКР АРМО ТЕХ\"","44799717","ukrarmo.tech"],
-["РЕБ / Зв'язок / Симулятори","L7 United","ТОВ \"Л7 ЮНАЙТЕД\"","45489201","l7simulators.com"],
-["РЕБ / Зв'язок / Симулятори","skiftech","ТОВ \"НВК \"СКІФ\"","42163490","skif-tech.com"],
-["РЕБ / Зв'язок / Симулятори","moodro","ТОВ \"МУДРО ТЕК\"","45483310","moodro.tech"],
-["РЕБ / Зв'язок / Симулятори","kvertus","ТОВ \"КВЕРТУС\"","41112077","kvertus.ua"],
-["РЕБ / Зв'язок / Симулятори","tencore","ТОВ \"ТЕНКОР\"","45370488","tencore.com.ua"],
-["РЕБ / Зв'язок / Симулятори","Teletactica","Teletactica (юрособа в Таллінні)","",""],
-["РЕБ / Зв'язок / Симулятори","Farsight Vision","ТОВ \"ФАРСАЙТ ВІЖН\"","45582705","farsightvision.com"],
-["РЕБ / Зв'язок / Симулятори","Black Forest Systems","ТОВ \"БЛЕК ФОРЕСТ СИСТЕМС\"","","blackforestsystems.com"],
-["РЕБ / Зв'язок / Симулятори","Stellar Jet","ТОВ \"Стеллар Джет\"","","stellaraircraft.com"],
-["РЕБ / Зв'язок / Симулятори","Abris Design Group","ABRIS Design Group Sp. z o.o.","30885496","abris.aero"],
-["РЕБ / Зв'язок / Симулятори","Blue-Bird.Tech","BlueBird Tech","","blue-bird.tech"],
-["РЕБ / Зв'язок / Симулятори","Dwarf Engineering","ТОВ \"ДВАРФ ІНЖИНІРИНГ\"","45474084","dwarf-engineering.com"],
-["РЕБ / Зв'язок / Симулятори","Sky Spy","Sky Spy AI","",""],
-["РЕБ / Зв'язок / Симулятори","Rovertech","ТОВ \"Ровертех\"","45489934","rovertech.co.ua"],
-["РЕБ / Зв'язок / Симулятори","VYTACH","VYTACH","","vytach.com"],
-["РЕБ / Зв'язок / Симулятори","Ukrspecconsulting","ТОВ \"УКРСПЕЦКОНСАЛТИНГ\"","32376280",""],
-["Інституції / Постачальники","Everstar","Everstar","","everstar.in.ua"],
-["Інституції / Постачальники","MILITECH GROUP","MILITECH GROUP","","militech.com.ua"],
-["Інституції / Постачальники","Кластер IRON","ГО \"Кластер IRON\"","","ironcluster.org"],
-["Інституції / Постачальники","Horizon Tech","Horizon Tech","",""],
-["Інституції / Постачальники","Eleven","Eleven","",""],
-["Інституції / Постачальники","CORE Team","CORE Team","",""],
-["Інституції / Постачальники","Phantom Defense","Phantom Defense","",""],
-["Інституції / Постачальники","air3f","air3f","",""]
-];
+// ДАНІ ВИДАЛЕНО: Масив тепер повністю порожній на старті
+const SEED = [];
 
 const esc = s => (s??"").toString().replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 const qq = s => encodeURIComponent(s||"");
@@ -162,10 +119,10 @@ const qq = s => encodeURIComponent(s||"");
 function load(){
   const raw = localStorage.getItem(KEY);
   if(raw){ try{ DATA = JSON.parse(raw); }catch(e){ DATA = []; } }
-  if(!DATA.length){
+  if(!DATA.length && SEED.length){
     DATA = SEED.map((r,i)=>({id:i+1, category:r[0], name:r[1], official_name:r[2], edrpou:r[3],
       edrpou_verified:0, website:r[4], phone:"", email:"", contact_person:"",
-      linkedin:"", facebook:"", status:"Новий", notes:""}));
+      linkedin:"", facebook:"", status:"Новий", notes:"", boss:""}));
     persist();
   }
 }
@@ -219,10 +176,13 @@ function card(c){
   const tel = (c.phone||"").split(/[;,]/)[0].trim();
   const mail = (c.email||"").split(/[;,]/)[0].trim();
   const links = buildLinks(c).map(([l,u])=>`<a href="${esc(u)}">${esc(l)} ↗</a>`).join("");
+  
+  const bLine = c.boss ? ` · 👤 Керівник: <b>${esc(c.boss)}</b>` : "";
+
   return `<article class="card" data-st="${esc(c.status)}" id="c${c.id}">
     <div class="top"><div><h2>${esc(c.name)}</h2><div class="cat">${esc(c.category||"")}</div></div>
     <span class="badge">${esc(c.status)}</span></div>
-    <div class="edr">${esc(c.official_name||"")} · ЄДРПОУ ${edr}</div>
+    <div class="edr">${esc(c.official_name||"")} · ЄДРПОУ ${edr}${bLine}</div>
     <div class="contact-line">
       ${tel?`<a class="act call" href="tel:${esc(tel.replace(/[^+\d]/g,""))}">📞 ${esc(tel)}</a>`:""}
       ${mail?`<a class="act mail" href="mailto:${esc(mail)}">✉ ${esc(mail)}</a>`:""}
@@ -239,10 +199,15 @@ function card(c){
         <div><label class="f">Facebook</label><input class="f-in" data-k="facebook" value="${esc(c.facebook)}"></div>
         <div><label class="f">ЄДРПОУ</label><input class="f-in mono" data-k="edrpou" value="${esc(c.edrpou)}"></div>
         <div><label class="f">ЄДРПОУ перевірено</label><select class="f-in" data-k="edrpou_verified"><option value="0" ${!c.edrpou_verified?"selected":""}>ні</option><option value="1" ${c.edrpou_verified?"selected":""}>так</option></select></div>
+        
+        <div class="full"><label class="f">Директор (CEO з ЄДР)</label><input class="f-in" data-k="boss" value="${esc(c.boss||"")}"></div>
+        
         <div class="full"><label class="f">Нотатки</label><textarea class="f-in" data-k="notes">${esc(c.notes)}</textarea></div>
       </div>
       <div class="row-btns">
         <button class="btn save" onclick="save(${c.id})">Зберегти</button>
+        ${c.website ? `<button class="btn save" style="background:var(--info)" onclick="startScrape(${c.id}, '${esc(c.website)}')">🤖 Скрапити сайт</button>` : ''}
+        ${c.edrpou ? `<button class="btn save" style="background:var(--ok)" onclick="updateViaCkan(${c.id}, '${esc(c.edrpou)}')">🌐 Зчитати з API ЄДР</button>` : ''}
         <button class="btn del" onclick="del(${c.id})">Видалити</button>
       </div>
     </div>
@@ -267,13 +232,102 @@ function addOne(){
   const name = document.getElementById("addName").value.trim();
   if(!name) return;
   DATA.unshift({id:nextId(), category:"", name, official_name:"", edrpou:document.getElementById("addEdr").value.trim(),
-    edrpou_verified:0, website:"", phone:"", email:"", contact_person:"", linkedin:"", facebook:"", status:"Новий", notes:""});
+    edrpou_verified:0, website:"", phone:"", email:"", contact_person:"", linkedin:"", facebook:"", status:"Новий", notes:"", boss:""});
   persist(); dlgAdd.close();
   document.getElementById("addName").value=""; document.getElementById("addEdr").value="";
   render();
 }
 
-/* ---- CSV ---- */
+function startScrape(id, url) {
+  if(!url) return;
+  let targetUrl = url.split(";")[0].trim();
+  if(!targetUrl.startsWith("http")) targetUrl = "https://" + targetUrl;
+  
+  if(window.Android && Android.scrapeWebsite) {
+    Android.scrapeWebsite(targetUrl, id.toString());
+    Toast("Запущено нативний скрапінг сайту...");
+  } else {
+    alert("Нативний інтерфейс Android недоступний");
+  }
+}
+
+window.onScrapeSuccess = function(callbackId, result) {
+  const id = parseInt(callbackId);
+  const c = DATA.find(x => x.id === id);
+  if(!c) return;
+  
+  let changed = false;
+  if(result.emails && result.emails.length) {
+    const freshEmails = result.emails.filter(e => !c.email.includes(e));
+    if(freshEmails.length) {
+      c.email = c.email ? c.email + "; " + freshEmails.join("; ") : freshEmails.join("; ");
+      changed = true;
+    }
+  }
+  if(result.phones && result.phones.length) {
+    const freshPhones = result.phones.filter(p => !c.phone.includes(p));
+    if(freshPhones.length) {
+      c.phone = c.phone ? c.phone + "; " + freshPhones.join("; ") : freshPhones.join("; ");
+      changed = true;
+    }
+  }
+  
+  if(changed) {
+    persist(); render();
+    alert("Знайдено та додано нові контакти з сайту!");
+  } else {
+    alert("Скрапінг завершено. Нових контактів не виявлено.");
+  }
+};
+
+window.onScrapeError = function(callbackId, errorMsg) {
+  alert("Помилка сканування сайту: " + errorMsg);
+};
+
+function updateViaCkan(id, edrpou) {
+  if(!edrpou || !/^\d+$/.test(edrpou)) return;
+  
+  let resId = localStorage.getItem("ckan_edr_res_id") || "233cf3ba-c7b4-469a-9e1e-fb9cfd6d1d4d";
+  Toast("Запит до API data.gov.ua...");
+  
+  fetch(`https://data.gov.ua/api/3/action/datastore_search?resource_id=${resId}&q=${edrpou}`)
+    .then(r => r.json())
+    .then(res => {
+      if(res.success && res.result.records.length > 0) {
+        const record = res.result.records[0];
+        const c = DATA.find(x => x.id === id);
+        if(!c) return;
+        
+        const oName = record.NAME || record.SHORT_NAME || record["Найменування"] || "";
+        const bossName = record.BOSS || record["Керівник"] || record["ПІБ керівника"] || "";
+        const address = record.ADDRESS || record["Місцезнаходження"] || "";
+        
+        if(oName) c.official_name = oName;
+        if(bossName) c.boss = bossName;
+        if(address && !c.notes.includes(address)) {
+          c.notes = (c.notes ? c.notes + "\n" : "") + "Адреса з реєстру: " + address;
+        }
+        c.edrpou_verified = 1;
+        
+        persist(); render();
+        alert("Дані успішно оновлено через Інтернет з держпорталу CKAN!");
+      } else {
+        const altId = prompt("Компанію не знайдено. Можливо, оновився Resource ID набору даних на data.gov.ua. Введіть новий ID ресурсу або залиште поточний:", resId);
+        if(altId && altId !== resId) {
+          localStorage.setItem("ckan_edr_res_id", altId);
+          updateViaCkan(id, edrpou);
+        }
+      }
+    })
+    .catch(err => {
+      alert("Не вдалося завантажити дані з API: " + err.message);
+    });
+}
+
+function Toast(msg) {
+  console.log(msg);
+}
+
 function parseCsvLine(line){
   const out = []; let cur = "", inQ = false;
   for(let i=0;i<line.length;i++){
@@ -295,11 +349,11 @@ function doImport(){
   const reader = new FileReader();
   reader.onload = () => {
     const lines = reader.result.split(/\r?\n/).filter(l=>l.trim());
-    let cols = ["edrpou","name","phone","email","address"];
+    let cols = ["edrpou","name","phone","email","address","boss"];
     let start = 0;
     const head = parseCsvLine(lines[0]).map(s=>s.trim().toLowerCase());
     if(head.includes("edrpou") || head.includes("name") || head.includes("єдрпоу") || head.includes("назва")){
-      cols = head.map(h => ({"єдрпоу":"edrpou","назва":"name","телефон":"phone","пошта":"email","адреса":"address"}[h] || h));
+      cols = head.map(h => ({"єдрпоу":"edrpou","назва":"name","телефон":"phone","пошта":"email","адреса":"address","директор":"boss","керівник":"boss"}[h] || h));
       start = 1;
     }
     let created=0, updated=0;
@@ -314,14 +368,15 @@ function doImport(){
         if(rec.email && !existing.email.includes(rec.email)) existing.email = existing.email ? existing.email+"; "+rec.email : rec.email;
         if(rec.address && !existing.notes.includes(rec.address)) existing.notes = (existing.notes?existing.notes+"\n":"")+"Адреса (ЄДР): "+rec.address;
         if(rec.name && !existing.official_name) existing.official_name = rec.name;
-        existing.edrpou_verified = 1; // дані з реєстру = ЄДРПОУ підтверджений
+        if(rec.boss) existing.boss = rec.boss;
+        existing.edrpou_verified = 1;
         updated++;
       } else {
         DATA.push({id:nextId(), category:"Імпорт", name:rec.name||("ЄДРПОУ "+rec.edrpou),
           official_name:rec.name||"", edrpou:rec.edrpou||"", edrpou_verified:rec.edrpou?1:0,
           website:rec.website||"", phone:rec.phone||"", email:rec.email||"",
           contact_person:"", linkedin:"", facebook:"", status:"Новий",
-          notes:rec.address?("Адреса (ЄДР): "+rec.address):""});
+          notes:rec.address?("Адреса (ЄДР): "+rec.address):"", boss:rec.boss||""});
         created++;
       }
     }
@@ -337,10 +392,10 @@ function csvCell(v){
 }
 
 function exportCsv(){
-  const cols = ["name","official_name","edrpou","category","website","phone","email","contact_person","linkedin","facebook","status","notes"];
-  const head = "Назва,Офіційна назва,ЄДРПОУ,Категорія,Сайт,Телефон,Email,Контактна особа,LinkedIn,Facebook,Статус,Нотатки";
+  const cols = ["name","official_name","edrpou","category","website","phone","email","contact_person","linkedin","facebook","status","boss","notes"];
+  const head = "Назва,Офіційна назва,ЄДРПОУ,Категорія,Сайт,Телефон,Email,Контактна особа,LinkedIn,Facebook,Статус,Директор,Нотатки";
   const body = DATA.map(c => cols.map(k=>csvCell(c[k])).join(",")).join("\n");
-  const csv = "\uFEFF" + head + "\n" + body;   // BOM, щоб Excel відкрив кирилицю
+  const csv = "\uFEFF" + head + "\n" + body;
   const name = "dms_outreach_" + new Date().toISOString().slice(0,10) + ".csv";
   if(window.Android && Android.saveFile){ Android.saveFile(name, csv); }
   else {
