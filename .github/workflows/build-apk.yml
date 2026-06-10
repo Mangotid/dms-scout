@@ -10,7 +10,6 @@ env:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   build:
@@ -28,23 +27,15 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+        # Без tee: якщо Gradle впаде, крок стане червоним і покаже реальну помилку
+        run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Report failure as issue
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAIL=$(tail -c 6000 build.log 2>/dev/null || echo "немає build.log")
-          gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "Build failed: run $GITHUB_RUN_ID" \
-            --body "\`\`\`
-          $TAIL
-          \`\`\`"
+      - name: Locate APK (Debug info)
+        # Виведе в лог точне місцезнаходження зібраного файлу
+        run: find . -name "*.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: dms-scout-debug-apk
-          # Шукає всі .apk файли в усіх підпапках проєкту
-          path: "**/*.apk"
+          path: app/build/outputs/apk/debug/app-debug.apk
