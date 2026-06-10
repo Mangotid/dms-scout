@@ -15,6 +15,7 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import org.jsoup.Jsoup // Імпорт Jsoup
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,7 +36,7 @@ class MainActivity : AppCompatActivity() {
 
         web.settings.apply {
             javaScriptEnabled = true
-            domStorageEnabled = true          // localStorage — основне сховище даних
+            domStorageEnabled = true
             allowFileAccess = true
         }
         web.addJavascriptInterface(Bridge(), "Android")
@@ -71,7 +72,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class Bridge {
-        /** Зберігає текстовий файл у Download/ через MediaStore (без runtime-дозволів на API 29+). */
         @JavascriptInterface
         fun saveFile(filename: String, content: String) {
             try {
@@ -103,6 +103,36 @@ class MainActivity : AppCompatActivity() {
                 putExtra(Intent.EXTRA_TEXT, text)
             }
             startActivity(Intent.createChooser(intent, "Поділитись"))
+        }
+
+        // НОВИЙ МЕТОД: Нативний скрапер сайтів
+        @JavascriptInterface
+        fun scrapeWebsite(url: String, callbackId: String) {
+            Thread {
+                try {
+                    // Парсимо сторінку, імітуючи звичайний десктопний браузер
+                    val doc = Jsoup.connect(url)
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                        .timeout(10000)
+                        .get()
+                    
+                    val emails = doc.select("a[href^=mailto:]").map { it.attr("href").replace("mailto:", "") }.toSet()
+                    val phones = doc.select("a[href^=tel:]").map { it.attr("href").replace("tel:", "") }.toSet()
+                    
+                    val jsonResult = """{
+                        "emails": [${emails.joinToString(",") { "\"$it\"" }}],
+                        "phones": [${phones.joinToString(",") { "\"$it\"" }}]
+                    }"""
+                    
+                    runOnUiThread {
+                        web.evaluateJavascript("if(window.onScrapeSuccess) window.onScrapeSuccess('$callbackId', $jsonResult)", null)
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        web.evaluateJavascript("if(window.onScrapeError) window.onScrapeError('$callbackId', '${e.message}')", null)
+                    }
+                }
+            }.start()
         }
     }
 
