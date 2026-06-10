@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Інтернет НЕ обов'язковий для роботи: тільки для відкриття лінків у браузері -->
+    
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="DMS Scout"
         android:icon="@mipmap/ic_launcher"
