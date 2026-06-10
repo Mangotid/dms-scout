@@ -1,143 +1,34 @@
-package ua.universalna.dmsscout
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
 
-import android.content.ContentValues
-import android.content.Intent
-import android.net.Uri
-import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
-import android.webkit.JavascriptInterface
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import org.jsoup.Jsoup // Імпорт Jsoup
+android {
+    namespace = "ua.universalna.dmsscout"
+    compileSdk = 34
 
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var web: WebView
-    private var filePathCallback: ValueCallback<Array<Uri>>? = null
-
-    private val fileChooser =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val uris = result.data?.data?.let { arrayOf(it) }
-            filePathCallback?.onReceiveValue(uris)
-            filePathCallback = null
-        }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        web = WebView(this)
-        setContentView(web)
-
-        web.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            allowFileAccess = true
-        }
-        web.addJavascriptInterface(Bridge(), "Android")
-
-        web.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val url = request.url
-                return when (url.scheme) {
-                    "tel", "mailto" -> { startActivity(Intent(Intent.ACTION_VIEW, url)); true }
-                    "http", "https" -> { startActivity(Intent(Intent.ACTION_VIEW, url)); true }
-                    else -> false
-                }
-            }
-        }
-
-        web.webChromeClient = object : WebChromeClient() {
-            override fun onShowFileChooser(
-                view: WebView, callback: ValueCallback<Array<Uri>>,
-                params: FileChooserParams
-            ): Boolean {
-                filePathCallback?.onReceiveValue(null)
-                filePathCallback = callback
-                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                    type = "*/*"
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                }
-                fileChooser.launch(Intent.createChooser(intent, "Оберіть CSV"))
-                return true
-            }
-        }
-
-        web.loadUrl("file:///android_asset/index.html")
+    defaultConfig {
+        applicationId = "ua.universalna.dmsscout"
+        minSdk = 29
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
     }
-
-    inner class Bridge {
-        @JavascriptInterface
-        fun saveFile(filename: String, content: String) {
-            try {
-                val values = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, filename)
-                    put(MediaStore.Downloads.MIME_TYPE, "text/csv")
-                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                }
-                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                uri?.let {
-                    contentResolver.openOutputStream(it)?.use { os ->
-                        os.write(content.toByteArray(Charsets.UTF_8))
-                    }
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Збережено: Download/$filename", Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Помилка збереження: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-
-        @JavascriptInterface
-        fun share(text: String) {
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, text)
-            }
-            startActivity(Intent.createChooser(intent, "Поділитись"))
-        }
-
-        // НОВИЙ МЕТОД: Нативний скрапер сайтів
-        @JavascriptInterface
-        fun scrapeWebsite(url: String, callbackId: String) {
-            Thread {
-                try {
-                    // Парсимо сторінку, імітуючи звичайний десктопний браузер
-                    val doc = Jsoup.connect(url)
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                        .timeout(10000)
-                        .get()
-                    
-                    val emails = doc.select("a[href^=mailto:]").map { it.attr("href").replace("mailto:", "") }.toSet()
-                    val phones = doc.select("a[href^=tel:]").map { it.attr("href").replace("tel:", "") }.toSet()
-                    
-                    val jsonResult = """{
-                        "emails": [${emails.joinToString(",") { "\"$it\"" }}],
-                        "phones": [${phones.joinToString(",") { "\"$it\"" }}]
-                    }"""
-                    
-                    runOnUiThread {
-                        web.evaluateJavascript("if(window.onScrapeSuccess) window.onScrapeSuccess('$callbackId', $jsonResult)", null)
-                    }
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        web.evaluateJavascript("if(window.onScrapeError) window.onScrapeError('$callbackId', '${e.message}')", null)
-                    }
-                }
-            }.start()
+    buildTypes {
+        release {
+            isMinifyEnabled = false
         }
     }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (web.canGoBack()) web.goBack() else super.onBackPressed()
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+    kotlinOptions { jvmTarget = "17" }
+}
+
+dependencies {
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.webkit:webkit:1.11.0")
+    // Добавляем библиотеку Jsoup для нативного скрапинга сайтов
+    implementation("org.jsoup:jsoup:1.17.2")
 }
