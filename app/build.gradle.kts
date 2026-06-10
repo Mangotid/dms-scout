@@ -11,7 +11,7 @@ android {
         applicationId = "ua.universalna.dmsscout"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1.1
+        versionCode = 2
         versionName = "1.1"
     }
     buildTypes {
