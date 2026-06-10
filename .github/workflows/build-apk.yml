@@ -4,6 +4,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+# Прибираємо попередження про Node.js 20
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: read
   issues: write
@@ -42,4 +46,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dms-scout-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          # Шукає всі .apk файли в усіх підпапках проєкту
+          path: "**/*.apk"
