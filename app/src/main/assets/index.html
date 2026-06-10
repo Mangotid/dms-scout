@@ -84,6 +84,7 @@ dialog .hint{font-size:12px;color:var(--mut);margin:6px 0 10px}
 <div class="bottombar">
   <button class="btn add" onclick="dlgAdd.showModal()">+ Компанія</button>
   <button class="btn imp" onclick="dlgImp.showModal()">Імпорт CSV</button>
+  <button class="btn imp" style="background:var(--info); color:#fff;" onclick="autoVerifyAllCompanies()">Авто-ЄДР 🌐</button>
   <button class="btn exp" onclick="exportCsv()">Експорт</button>
 </div>
 
@@ -110,7 +111,6 @@ const STATUSES = ["Новий","В роботі","Зацікавлені","Пе�
 const KEY = "dms_scout_v1";
 let DATA = [], FILTER = "", QUERY = "";
 
-// ДАНІ ВИДАЛЕНО: Масив тепер повністю порожній на старті
 const SEED = [];
 
 const esc = s => (s??"").toString().replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
@@ -245,7 +245,6 @@ function startScrape(id, url) {
   
   if(window.Android && Android.scrapeWebsite) {
     Android.scrapeWebsite(targetUrl, id.toString());
-    Toast("Запущено нативний скрапінг сайту...");
   } else {
     alert("Нативний інтерфейс Android недоступний");
   }
@@ -271,12 +270,22 @@ window.onScrapeSuccess = function(callbackId, result) {
       changed = true;
     }
   }
+  if(result.hr_staff && result.hr_staff.trim()) {
+    const infoLine = "Знайдено на сайті: " + result.hr_staff;
+    if(!c.notes.includes(result.hr_staff)) {
+      c.notes = c.notes ? c.notes + "\n" + infoLine : infoLine;
+      if(!c.contact_person && (result.hr_staff.toLowerCase().includes("hr") || result.hr_staff.toLowerCase().includes("рекрутер") || result.hr_staff.toLowerCase().includes("hrd"))) {
+        c.contact_person = result.hr_staff.substring(0, 60);
+      }
+      changed = true;
+    }
+  }
   
   if(changed) {
     persist(); render();
-    alert("Знайдено та додано нові контакти з сайту!");
+    alert("Дані успішно оновлені! Знайдено нові контакти або інформацію про команду.");
   } else {
-    alert("Скрапінг завершено. Нових контактів не виявлено.");
+    alert("Скрапінг завершено. Нових унікальних контактів на сторінках не знайдено.");
   }
 };
 
@@ -284,11 +293,62 @@ window.onScrapeError = function(callbackId, errorMsg) {
   alert("Помилка сканування сайту: " + errorMsg);
 };
 
+function autoVerifyAllCompanies() {
+  const toVerify = DATA.filter(c => c.edrpou && !c.edrpou_verified);
+  if (toVerify.length === 0) {
+    alert("Усі компанії вже верифіковані або у них відсутній ЄДРПОУ.");
+    return;
+  }
+  
+  let index = 0;
+  function next() {
+    if (index < toVerify.length) {
+      const target = toVerify[index];
+      updateViaCkanSilent(target.id, target.edrpou, () => {
+        index++;
+        setTimeout(next, 1500);
+      });
+    } else {
+      alert("Автоматична пакетна верифікація через ЄДР завершена!");
+    }
+  }
+  next();
+}
+
+function updateViaCkanSilent(id, edrpou, callback) {
+  let resId = localStorage.getItem("ckan_edr_res_id") || "233cf3ba-c7b4-469a-9e1e-fb9cfd6d1d4d";
+  fetch(`https://data.gov.ua/api/3/action/datastore_search?resource_id=${resId}&q=${edrpou}`)
+    .then(r => r.json())
+    .then(res => {
+      if(res.success && res.result.records.length > 0) {
+        const record = res.result.records[0];
+        const c = DATA.find(x => x.id === id);
+        if(c) {
+          const oName = record.NAME || record.SHORT_NAME || record["Найменування"] || "";
+          const bossName = record.BOSS || record["Керівник"] || record["ПІБ керівника"] || "";
+          const address = record.ADDRESS || record["Місцезнаходження"] || "";
+          
+          if(oName) c.official_name = oName;
+          if(bossName) c.boss = bossName;
+          if(address && !c.notes.includes(address)) {
+            c.notes = (c.notes ? c.notes + "\n" : "") + "Адреса з реєстру: " + address;
+          }
+          c.edrpou_verified = 1;
+          persist(); render();
+        }
+      }
+      if(callback) callback();
+    })
+    .catch(err => {
+      console.error("Помилка верифікації ЄДР: " + err.message);
+      if(callback) callback();
+    });
+}
+
 function updateViaCkan(id, edrpou) {
   if(!edrpou || !/^\d+$/.test(edrpou)) return;
   
   let resId = localStorage.getItem("ckan_edr_res_id") || "233cf3ba-c7b4-469a-9e1e-fb9cfd6d1d4d";
-  Toast("Запит до API data.gov.ua...");
   
   fetch(`https://data.gov.ua/api/3/action/datastore_search?resource_id=${resId}&q=${edrpou}`)
     .then(r => r.json())
@@ -322,10 +382,6 @@ function updateViaCkan(id, edrpou) {
     .catch(err => {
       alert("Не вдалося завантажити дані з API: " + err.message);
     });
-}
-
-function Toast(msg) {
-  console.log(msg);
 }
 
 function parseCsvLine(line){
