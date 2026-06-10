@@ -29,21 +29,24 @@ def main():
     n_total = n_hit = 0
     with open(out_path, "w", newline="", encoding="utf-8") as out:
         w = csv.writer(out)
-        w.writerow(["edrpou", "name", "phone", "email", "address"])
-        # Тег запису в дампі UFOP — SUBJECT (в окремих версіях RECORD); пробуємо обидва.
+        # Додано "boss"
+        w.writerow(["edrpou", "name", "phone", "email", "address", "boss"])
+        
         for _, el in etree.iterparse(xml_path, events=("end",), tag=("SUBJECT", "RECORD")):
             n_total += 1
             edrpou = text(el, "EDRPOU") or text(el, "CODE")
             if wanted is None or (edrpou and edrpou.lstrip("0") in wanted):
                 name = text(el, "NAME") or text(el, "SHORT_NAME")
-                # Контакти лежать у CONTACTS/TEL, CONTACTS/EMAIL або плоско
                 contacts = el.find("CONTACTS")
                 src = contacts if contacts is not None else el
                 phones = "; ".join(t.text.strip() for t in src.findall("TEL") if t.text)
                 email = text(src, "EMAIL")
                 address = text(el, "ADDRESS")
-                if wanted is not None or phones or email:
-                    w.writerow([edrpou, name, phones, email, address])
+                boss = text(el, "BOSS")  # Витягуємо керівника з ЄДР
+                
+                # Записуємо, якщо є будь-які корисні контакти або директор
+                if wanted is not None or phones or email or boss:
+                    w.writerow([edrpou, name, phones, email, address, boss])
                     n_hit += 1
             el.clear()
             while el.getprevious() is not None:
